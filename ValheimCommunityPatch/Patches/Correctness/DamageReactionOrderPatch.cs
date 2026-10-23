@@ -50,19 +50,20 @@ namespace ValheimCommunityPatch.Patches.Correctness {
             if (!__runOriginal) { return false; }
             if (Enabled == null || !Enabled.Value || Takeover.TakenOver) { return true; }
 
-            // use vanilla hashset look up within short list of managed status effects
-            // to see if this needs to run
-            if (!__instance.HaveStatusEffect(SE_React_NameHash)) { return true; }
-
-            // use vanilla get method to fetch react status effect
-            // - worst case it runs an entire loop over the list
-            // - best case it uses the performance improvements from SEManPatch to do a fast look up
-            // - hopefully faster in both cases then calling HasReaction but profiling will answer that?
-            __instance.GetStatusEffect(SE_React_NameHash).OnDamaged(hit, attacker);
-
-            // handle updating the rest of the status effects as per vanilla
+            // loop over status effects and apply them if they are reaction subclass
             List<StatusEffect> effects = __instance.m_statusEffects;
+            bool hasReaction = false;
+            foreach (StatusEffect statusEffect in effects)
+            {
+                if (statusEffect is SE_React)
+                {
+                    statusEffect.OnDamaged(hit, attacker);
+                    hasReaction |= true;
+                }
+            }
 
+            if (!hasReaction) { return false; }
+  
             // foreach, as vanilla, so an effect that edits the list mid-hit fails the same way.
             foreach (StatusEffect effect in effects) {
                 if (!(effect is SE_React)) { effect.OnDamaged(hit, attacker); }
